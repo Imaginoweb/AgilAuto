@@ -32,6 +32,20 @@
     .car{display:flex;gap:14px}
     .car img{width:180px;height:112px;object-fit:cover;border-radius:10px;border:1px solid var(--aa-border)}
     .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;background:#edf4ff;color:var(--aa-blue)}
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:8px}
+    .kpi{border:1px solid var(--aa-border);border-radius:14px;padding:14px}
+    .kpi-head{display:flex;align-items:center;gap:10px}
+    .kpi-ico{width:34px;height:34px;border-radius:10px;background:#edf4ff;display:flex;align-items:center;justify-content:center}
+    .kpi-val{font-size:28px;font-weight:800}
+    .kpi-sub{margin-top:4px;color:#5a6d86}
+    .donut{--p:65;--c1:#2f79d8;--c2:#bfcfff;width:100px;height:100px;border-radius:50%;background:conic-gradient(var(--c1) calc(var(--p)*1%), var(--c2) 0);mask: radial-gradient(circle 36px, transparent 36px, black 37px); margin:10px auto}
+    .kpi-legend{display:flex;justify-content:space-between;margin-top:6px;color:#5a6d86}
+    .dot,.dot.alt{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;background:#2f79d8}
+    .dot.alt{background:#bfcfff}
+    .dash-footer{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    .chip{background:#fff;border:1px solid var(--aa-border);border-radius:999px;padding:6px 10px;display:flex;align-items:center;gap:8px}
+    .avatars{display:inline-flex;gap:4px;margin-left:6px}
+    .avatars img{width:22px;height:22px;border-radius:50%;border:1px solid #fff;box-shadow:0 0 0 1px #dfe8f5}
   </style>
 </head>
 <body>
@@ -114,6 +128,39 @@
         </div>
       </div>
 
+      <div class="card" id="account-dash" style="display:none">
+        <h3 style="margin-top:0">Tableau de bord du compte</h3>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-head"><div class="kpi-ico">🔥</div><div class="kpi-val" id="dash-leads-val">–</div></div>
+            <div class="kpi-sub">Leads en cours</div>
+            <div class="donut" id="donut-leads"></div>
+            <div class="kpi-legend"><div><span class="dot"></span> Equi parity</div><div id="leads-equi">–</div></div>
+            <div class="kpi-legend"><div><span class="dot alt"></span> FDC</div><div id="leads-fdc">–</div></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-head"><div class="kpi-ico">🗓️</div><div class="kpi-val" id="dash-rdv-val">–</div></div>
+            <div class="kpi-sub">Rendez-vous</div>
+            <div class="donut" id="donut-rdv"></div>
+            <div class="kpi-legend"><div><span class="dot"></span> Equi parity</div><div id="rdv-equi">–</div></div>
+            <div class="kpi-legend"><div><span class="dot alt"></span> FDC</div><div id="rdv-fdc">–</div></div>
+          </div>
+        </div>
+        <div class="dash-footer">
+          <div class="chip"><strong id="dash-renouv">–</strong> Renouvellements</div>
+          <div class="chip"><strong id="dash-contrats-actifs">–</strong> Contrats actifs</div>
+          <div class="chip"><strong id="dash-ca">–</strong> CA total (est.)</div>
+          <div class="chip"><strong id="dash-rdv-planifies">–</strong> Rdv planifiés</div>
+          <div class="chip">Vendeurs
+            <span class="avatars">
+              <img src="https://i.pravatar.cc/32?img=12" alt="">
+              <img src="https://i.pravatar.cc/32?img=5"  alt="">
+              <img src="https://i.pravatar.cc/32?img=33" alt="">
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <h3 style="margin-top:0">Liste gestionnaires</h3>
         <div class="list" id="account-managers"><div class="muted">(Résultats après recherche compte)</div></div>
@@ -143,6 +190,7 @@
   </div>
 
   <script>
+    // Tabs
     document.querySelectorAll('.tab-btn').forEach(btn=>{
       btn.addEventListener('click',()=>{
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
@@ -153,36 +201,41 @@
       });
     });
 
+    // API endpoints
     const API_KEY = '1ad6eccb-055d-4600-9b4f-571165af3982';
-    const FLEET_BASE = 'https://francois-sandbox.saas.imagino.com/ucdapi/Vue_gestionnaire_de_flotte/1';
+    const FLEET_BASE   = 'https://francois-sandbox.saas.imagino.com/ucdapi/Vue_gestionnaire_de_flotte/1';
     const ACCOUNT_BASE = 'https://francois-sandbox.saas.imagino.com/ucdapi/Vue_Account_API/1';
-    const CONTRACT_BASE = 'https://francois-sandbox.saas.imagino.com/ucdapi/Contrat/1';
+    const CONTRACT_BASE= 'https://francois-sandbox.saas.imagino.com/ucdapi/Contrat/1';
 
-  async function fetchJSON(url){
-  const res = await fetch(url, { headers: { 'X-Api-Key': API_KEY }});
-  if(!res.ok) throw new Error('HTTP '+res.status);
-  return res.json();
-}
-function getManagerSapContactId(obj){
-  // Try common keys
-  const direct = obj.SAP_CONTACT_ID || obj.sapContactId || obj.sap_contact_id || obj.contactSapId || obj.id;
-  if (direct) return String(direct);
+    async function fetchJSON(url){
+      const res = await fetch(url, { headers: { 'X-Api-Key': API_KEY }});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      return res.json();
+    }
+    function setText(id, val){ const el = document.getElementById(id); if(el) el.textContent = val ?? '—'; }
 
-  // Fallback: scan keys looking for “sap…contact…id”
-  for (const k of Object.keys(obj||{})){
-    if (/sap.*contact.*id/i.test(k)) return String(obj[k]);
-  }
-  return undefined;
-}
+    function getManagerSapContactId(obj){
+      const direct = obj.SAP_CONTACT_ID || obj.sapContactId || obj.sap_contact_id || obj.contactSapId || obj.id;
+      if (direct) return String(direct);
+      for (const k of Object.keys(obj||{})){
+        if (/sap.*contact.*id/i.test(k)) return String(obj[k]);
+      }
+      return undefined;
+    }
+    function getAccountId(acc){
+      return acc.SAP_ACCOUNT_ID || acc.sapAccountId || acc.accountId || acc.account_id || acc.id || '';
+    }
+    function getAccountBrand(acc){
+      return (acc.brand || acc.accountBrand || acc.company || '').toString().toLowerCase();
+    }
 
-
+    // Search helpers
     async function searchFleetByEmail(email){
       const js = await fetchJSON(`${FLEET_BASE}/Vue_Gestionnaires_de_flotte?limit=1000`);
       const list = (js && js.data) || [];
       const e = email.trim().toLowerCase();
       return list.find(x => (x.email||'').toLowerCase() === e) || list.find(x => (x.email||'').toLowerCase().includes(e));
     }
-
     async function searchAccountByName(name){
       const js = await fetchJSON(`${ACCOUNT_BASE}/Vue_account?limit=1000`);
       const list = (js && js.data) || [];
@@ -190,8 +243,7 @@ function getManagerSapContactId(obj){
       return list.find(x => (x.brand||'').toLowerCase().includes(n));
     }
 
-    function setText(id, val){ const el = document.getElementById(id); if(el) el.textContent = val ?? '—'; }
-
+    // Fleet actions
     document.getElementById('btn-search-fleet')?.addEventListener('click', async ()=>{
       const email = (document.getElementById('fleet-email')?.value || '').trim();
       if(!email){ alert('Saisir un email gestionnaire'); return; }
@@ -207,37 +259,33 @@ function getManagerSapContactId(obj){
       }catch(e){ console.error(e); alert('Erreur API gestionnaire'); }
     });
 
+    // Account actions
     document.getElementById('btn-search-account')?.addEventListener('click', async ()=>{
-  const name = (document.getElementById('account-name')?.value || '').trim();
-  if(!name){ alert('Saisir un nom de compte'); return; }
-  try{
-    const rec = await searchAccountByName(name);
-    if(!rec){ alert('Compte introuvable'); return; }
+      const name = (document.getElementById('account-name')?.value || '').trim();
+      if(!name){ alert('Saisir un nom de compte'); return; }
+      try{
+        const rec = await searchAccountByName(name);
+        if(!rec){ alert('Compte introuvable'); return; }
 
-    setText('acc-brand', rec.brand||'—');
-    setText('acc-siren', rec.SIREN||'—');
-    setText('acc-address', rec.addressLine||'—');
-    setText('acc-country', rec.country||'—');
-    setText('acc-phone', rec.telephone||'—');
-    setText('acc-email', rec.email||'—');
-    setText('acc-url', rec.url||'—');
+        setText('acc-brand',   rec.brand||'—');
+        setText('acc-siren',   rec.SIREN||'—');
+        setText('acc-address', rec.addressLine||'—');
+        setText('acc-country', rec.country||'—');
+        setText('acc-phone',   rec.telephone||'—');
+        setText('acc-email',   rec.email||'—');
+        setText('acc-url',     rec.url||'—');
 
-    // Alimente les sections
-    await Promise.all([
-      populateAccountManagers(rec),
-      populateAccountContracts(rec)
-    ]);
-  }catch(e){
-    console.error(e);
-    alert('Erreur API compte');
-  }
-});
-    // ===== Helpers contrats =====
+        const related = await populateAccountContracts(rec);
+        renderAccountDashboard(rec, related);
+        await populateAccountManagers(rec);
+      }catch(e){ console.error(e); alert('Erreur API compte'); }
+    });
+
+    // Contract helpers
     function buildCarImage(make, model, color){
       const m = encodeURIComponent(make||'');
       const f = encodeURIComponent(model||'');
       const p = encodeURIComponent(color||'');
-      // Fallback vers une image Imagin si pas d'URL fournie par l'API
       return `https://cdn.imagin.studio/getImage?customer=frcacf&make=${m}&modelFamily=${f}&angle=01&paintDescription=${p}&modelYear=2025&tailoring=agilauto&zoomType=fullscreen&witdh=800`;
     }
     function normalizeContract(raw){
@@ -280,146 +328,124 @@ function getManagerSapContactId(obj){
       </div>`;
     }
 
- async function populateFleetContracts(manager){
-  const box = document.getElementById('fleet-contracts');
-  box.innerHTML = '<div class="muted">Chargement…</div>';
-  try{
-    // Correct endpoint from your Swagger
-    const all = await fetchJSON(`${CONTRACT_BASE}/DEMOFR_AGIL_RAW_SAP_CONTRACT?limit=10000`);
-    const rows = (all && all.data) || [];
-
-    const managerId = getManagerSapContactId(manager); // e.g. "FMKPC01"
-    const related = rows.filter(r => String(r.FLEET_MANAGER_CONTACT_ID||'') === String(managerId||''));
-
-    box.innerHTML = '';
-    if (!related.length){
-      box.innerHTML = '<div class="muted">Aucun contrat trouvé pour ce gestionnaire</div>';
-      return;
+    // Fleet contracts
+    async function populateFleetContracts(manager){
+      const box = document.getElementById('fleet-contracts');
+      box.innerHTML = '<div class="muted">Chargement…</div>';
+      try{
+        const all = await fetchJSON(`${CONTRACT_BASE}/DEMOFR_AGIL_RAW_SAP_CONTRACT?limit=10000`);
+        const rows = (all && all.data) || [];
+        const managerId = getManagerSapContactId(manager);
+        const related = rows.filter(r => String(r.FLEET_MANAGER_CONTACT_ID||'') === String(managerId||''));
+        box.innerHTML = related.length ? related.map(contractCardHTML).join('') : '<div class="muted">Aucun contrat trouvé pour ce gestionnaire</div>';
+      }catch(e){
+        console.error(e);
+        box.innerHTML = '<div class="muted">Erreur chargement contrats</div>';
+      }
     }
 
-    // Render cards
-    const html = related.map(r => {
-      const c = {
-        vehicleMake: r.VEHICLE_MAKE,
-        vehicleModel: r.VEHICLE_MODEL,
-        vehicleTrim:  r.VEHICLE_TRIM,
-        vehicleColor: r.VEHICLE_COLOR,
-        amount:       r.AMOUNT,
-        status:       r.STATUS,
-        startDate:    r.START_DATE,
-        endDate:      r.END_DATE,
-        vin:          r.VIN,
-        imageUrl:     r.VEHICLE_IMAGE_URL,
-        driverName:   ((r.Prenom_Conducteur||'') + ' ' + (r.Nom_conducteur||'')).trim()
-      };
-      const img = c.imageUrl || `https://cdn.imagin.studio/getImage?customer=frcacf&make=${encodeURIComponent(c.vehicleMake||'')}&modelFamily=${encodeURIComponent(c.vehicleModel||'')}&angle=01&paintDescription=${encodeURIComponent(c.vehicleColor||'')}&modelYear=2025&tailoring=agilauto&zoomType=fullscreen&witdh=800`;
-      const start = c.startDate ? new Date(c.startDate).toLocaleDateString('fr-FR') : '—';
-      const end   = c.endDate   ? new Date(c.endDate).toLocaleDateString('fr-FR') : '—';
+    // Account managers
+    function renderManagerCard(m){
+      const initials = `${(m.firstName||'?')[0]||'?'}${(m.lastName||'?')[0]||''}`.toUpperCase();
+      const email = m.email || '—';
+      const phone = m.mobile || m.phone || '—';
       return `
-        <div class="car card">
-          <img src="${img}" alt="${(c.vehicleMake||'')+' '+(c.vehicleModel||'')}" />
+        <div class="card" style="display:flex;align-items:center;gap:14px">
+          <div style="width:44px;height:44px;border-radius:50%;background:#edf4ff;border:1px solid var(--aa-border);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--aa-blue)">${initials}</div>
           <div>
-            <div class="tag">${c.status||'—'}</div>
-            <h4 style="margin:6px 0 4px">${[c.vehicleMake,c.vehicleModel,c.vehicleTrim].filter(Boolean).join(' ')||'Véhicule'}</h4>
-            <div class="muted">Conducteur : ${c.driverName||'—'} • VIN ${c.vin||'—'}</div>
-            <div class="muted">Début ${start} • Fin ${end} ${c.amount!=null ? '• '+c.amount+' €/mois':''}</div>
+            <div><strong>${[m.firstName,m.lastName].filter(Boolean).join(' ')}</strong> <span class="tag">Gestionnaire de flotte</span></div>
+            <div class="muted">${email} • ${phone}</div>
           </div>
         </div>`;
-    }).join('');
-    box.innerHTML = html;
+    }
+    async function populateAccountManagers(account){
+      const box = document.getElementById('account-managers');
+      box.innerHTML = '<div class="muted">Chargement…</div>';
+      try{
+        const js  = await fetchJSON(`${FLEET_BASE}/Vue_Gestionnaires_de_flotte?limit=10000`);
+        const all = (js && js.data) || [];
+        const wantedAccId = String(account?.SAP_ACCOUNT_ID || account?.sapAccountId || account?.accountId || '');
+        const byEmail   = m => (m.email||'').toLowerCase().includes('kpc');
+        const byAccount = m => wantedAccId && String(m.SAP_ACCOUNT_ID||m.accountId||'') === wantedAccId;
+        const filtered = all.filter(m => byEmail(m) || byAccount(m));
+        const seen = new Set();
+        const unique = filtered.filter(m=>{ const e=(m.email||'').toLowerCase(); if(seen.has(e)) return false; seen.add(e); return true; });
+        box.innerHTML = unique.length ? unique.map(renderManagerCard).join('') : '<div class="muted">Aucun gestionnaire rattaché à ce compte</div>';
+      }catch(e){
+        console.error(e);
+        box.innerHTML = '<div class="muted">Erreur chargement gestionnaires</div>';
+      }
+    }
 
-  }catch(e){
-    console.error(e);
-    box.innerHTML = '<div class="muted">Erreur chargement contrats</div>';
-  }
-}
-// === Helpers pour le compte ===
-function getAccountId(acc){
-  return acc.SAP_ACCOUNT_ID || acc.sapAccountId || acc.accountId || acc.account_id || acc.id || '';
-}
-function getAccountBrand(acc){
-  return (acc.brand || acc.accountBrand || acc.company || '').toString().toLowerCase();
-}
+    // Account contracts + dashboard
+    async function populateAccountContracts(account){
+      const box = document.getElementById('account-contracts');
+      box.innerHTML = '<div class="muted">Chargement…</div>';
+      try{
+        const all  = await fetchJSON(`${CONTRACT_BASE}/DEMOFR_AGIL_RAW_SAP_CONTRACT?limit=10000`);
+        const rows = (all && all.data) || [];
+        const accId = String(getAccountId(account));
+        const brand = getAccountBrand(account);
+        const isKPC = accId.toUpperCase()==='KPC' || brand.includes('kpc');
+        const related = rows.filter(r=>{
+          const rAcc   = String(r.SAP_ACCOUNT_ID || r.account_id || '');
+          const rBrand = (r.accountBrand || '').toString().toLowerCase();
+          return (accId && rAcc && rAcc === accId) || (isKPC && (rAcc.toUpperCase().includes('KPC') || rBrand.includes('kpc')));
+        });
+        box.innerHTML = related.length ? related.map(contractCardHTML).join('') : '<div class="muted">Aucun contrat pour ce compte</div>';
+        return related;
+      }catch(e){
+        console.error(e);
+        box.innerHTML = '<div class="muted">Erreur chargement contrats</div>';
+        return [];
+      }
+    }
 
-// Petite carte "gestionnaire"
-function renderManagerCard(m){
-  const initials = `${(m.firstName||'?')[0]||'?'}${(m.lastName||'?')[0]||''}`.toUpperCase();
-  const email = m.email || '—';
-  const phone = m.mobile || m.phone || '—';
-  return `
-    <div class="card" style="display:flex;align-items:center;gap:14px">
-      <div style="width:44px;height:44px;border-radius:50%;background:#edf4ff;border:1px solid var(--aa-border);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--aa-blue)">${initials}</div>
-      <div>
-        <div><strong>${[m.firstName,m.lastName].filter(Boolean).join(' ')}</strong> <span class="tag">Gestionnaire de flotte</span></div>
-        <div class="muted">${email} • ${phone}</div>
-      </div>
-    </div>`;
-}
+    // Dashboard helpers
+    function sum(nums){ return nums.reduce((a,b)=>a+(+b||0),0); }
+    function euro(n){ return (n||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}); }
+    function setDonut(el, percent){ if(!el) return; el.style.setProperty('--p', Math.max(0,Math.min(100,percent))); }
+    function renderAccountDashboard(account, contracts){
+      const brand = (account.brand||'').toLowerCase();
+      const accId = String(account.SAP_ACCOUNT_ID||'').toLowerCase();
+      const isKPC = brand.includes('kpc') || accId.includes('kpc');
+      const wrap = document.getElementById('account-dash');
+      if(!wrap) return;
+      wrap.style.display = isKPC ? 'block' : 'none';
+      if(!isKPC) return;
 
-// === Liste des gestionnaires du compte (ID compte = "KPC" accepté) ===
-// === Liste des gestionnaires du compte ===
-async function populateAccountManagers(account){
-  const box = document.getElementById('account-managers');
-  box.innerHTML = '<div class="muted">Chargement…</div>';
-  try{
-    const js = await fetchJSON(`${FLEET_BASE}/Vue_Gestionnaires_de_flotte?limit=10000`);
-    const all = (js && js.data) || [];
+      const actifs = contracts.filter(c => (c.STATUS||c.status) === 'actif');
+      const nbActifs = actifs.length;
+      const caMensuel = sum(actifs.map(c=> c.AMOUNT ?? c.amount));
+      const caAnnuelEstim = caMensuel * 12;
 
-    const wantedAccId = (account && (account.SAP_ACCOUNT_ID || account.sapAccountId || account.accountId)) || '';
-    const byEmail = m => (m.email||'').toLowerCase().includes('kpc');
-    const byAccount = m => wantedAccId && String(m.SAP_ACCOUNT_ID||m.accountId||'') === String(wantedAccId);
+      const bientotFin = contracts.filter(c=>{
+        const end = new Date(c.END_DATE||c.endDate||'');
+        if(isNaN(end)) return false;
+        const now = new Date();
+        const in90 = new Date(now.getTime()+90*24*3600*1000);
+        return end >= now && end <= in90;
+      }).length;
 
-    // filtre demandé (email contient "kpc") + match par compte si fourni
-    const filtered = all.filter(m => byEmail(m) || byAccount(m));
+      // mocks
+      const leadsTotal=72, leadsEqui=45, leadsFdc=27;
+      const rdvTotal=52,  rdvEqui=40,  rdvFdc=12;
 
-    // dédoublonnage par email
-    const seen = new Set();
-    const unique = filtered.filter(m=>{
-      const e = (m.email||'').toLowerCase();
-      if(seen.has(e)) return false;
-      seen.add(e);
-      return true;
-    });
+      document.getElementById('dash-leads-val').textContent = leadsTotal;
+      document.getElementById('leads-equi').textContent = leadsEqui;
+      document.getElementById('leads-fdc').textContent  = leadsFdc;
+      setDonut(document.getElementById('donut-leads'), Math.round(leadsEqui/leadsTotal*100));
 
-    box.innerHTML = unique.length
-      ? unique.map(renderManagerCard).join('')   // <-- corrige le nom de la fonction
-      : '<div class="muted">Aucun gestionnaire rattaché à ce compte</div>';
-  }catch(e){
-    console.error(e);
-    box.innerHTML = '<div class="muted">Erreur chargement gestionnaires</div>';
-  }
-}
+      document.getElementById('dash-rdv-val').textContent = rdvTotal;
+      document.getElementById('rdv-equi').textContent = rdvEqui;
+      document.getElementById('rdv-fdc').textContent  = rdvFdc;
+      setDonut(document.getElementById('donut-rdv'), Math.round(rdvEqui/rdvTotal*100));
 
-
-// === Contrats du compte (filtre via SAP_ACCOUNT_ID ; tolère "KPC") ===
-async function populateAccountContracts(account){
-  const box = document.getElementById('account-contracts');
-  box.innerHTML = '<div class="muted">Chargement…</div>';
-
-  try{
-    const all = await fetchJSON(`${CONTRACT_BASE}/DEMOFR_AGIL_RAW_SAP_CONTRACT?limit=10000`);
-    const rows = (all && all.data) || [];
-
-    const accId = String(getAccountId(account));
-    const brand = getAccountBrand(account);
-    const isKPC = accId.toUpperCase()==='KPC' || brand.includes('kpc');
-
-    const related = rows.filter(r=>{
-      const rAcc = String(r.SAP_ACCOUNT_ID || r.account_id || '');
-      const rBrand = (r.accountBrand || '').toString().toLowerCase();
-      return (accId && rAcc && rAcc === accId)
-          || (isKPC && (rAcc.toUpperCase().includes('KPC') || rBrand.includes('kpc')));
-    });
-
-    box.innerHTML = related.length
-      ? related.map(contractCardHTML).join('')
-      : '<div class="muted">Aucun contrat pour ce compte</div>';
-  }catch(e){
-    console.error(e);
-    box.innerHTML = '<div class="muted">Erreur chargement contrats</div>';
-  }
-
-}
-</script>
+      document.getElementById('dash-renouv').textContent = bientotFin;
+      document.getElementById('dash-contrats-actifs').textContent = nbActifs;
+      document.getElementById('dash-ca').textContent = euro(caAnnuelEstim);
+      document.getElementById('dash-rdv-planifies').textContent = 10;
+    }
+  </script>
 </body>
 </html>
