@@ -314,7 +314,7 @@
       const title = [c.vehicleMake, c.vehicleModel, c.vehicleTrim].filter(Boolean).join(' ') || 'Véhicule';
       const driver = c.driverName || (c.driverContactId ? `ID ${c.driverContactId}` : '—');
       const vin = c.vin || '—';
-      const amount = (c.amount!=null) ? `${c.amount} €/mois` : '';
+      const amount = (c.amount!=null) ? `${c.amount} €/an` : '';
       const start = c.startDate ? new Date(c.startDate).toLocaleDateString('fr-FR') : '—';
       const end = c.endDate ? new Date(c.endDate).toLocaleDateString('fr-FR') : '—';
       return `<div class="car card">
@@ -449,3 +449,4 @@
   </script>
 </body>
 </html>
+
